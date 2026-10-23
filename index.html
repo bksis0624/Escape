@@ -1930,21 +1930,34 @@
         }
 
         startBtn.addEventListener('click', () => {
-            initAudio();
-            fogEnabled = true; 
-            currentLevel = 1;
-            totalCoins = 10;
-            totalBulbPoints = 0;
-            updateBatteryUI();
-            playerInventory = null;
-            
-            elapsedSeconds = 0;
-            timerDisplay.textContent = "00:00";
-            startTimer();
+    initAudio();
 
-            updateStatusUI();
-            initNewLevel();
+    // 讓整個遊戲容器或文件進入全螢幕
+    let elem = document.documentElement; // 或者是您的 #game-container
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => {
+            console.log("全螢幕請求被拒絕或不支援:", err);
         });
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE/Edge */
+        elem.msRequestFullscreen();
+    }
+
+    fogEnabled = true; 
+    currentLevel = 1;
+    totalCoins = 10;
+    totalBulbPoints = 0;
+    updateBatteryUI();
+    playerInventory = null;
+    
+    elapsedSeconds = 0;
+    timerDisplay.textContent = "00:00";
+    startTimer();
+
+    updateStatusUI();
+    initNewLevel();
+});
 
         closeShopBtn.addEventListener('click', () => {
             toggleShop();
