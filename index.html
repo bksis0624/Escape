@@ -673,8 +673,8 @@
             } catch(e) {}
         }
 
-        const PLAYER_NORMAL_SPEED = 2;
-        const PLAYER_SHIFT_SPEED = 3.2;
+        const PLAYER_NORMAL_SPEED = 3;
+        const PLAYER_SHIFT_SPEED = 3;
 
         let player = {
             x: 0,
@@ -829,7 +829,7 @@
                 useInventoryItem();
             });
 
-            // 畫布點擊事件：用於點擊頭頂手掌圖示來撿取或互換道具
+            // 畫布點擊事件：用於點擊頭頂手掌圖示來直接撿取或互換道具
             canvas.addEventListener('click', (e) => {
                 if (!gameRunning || isPaused || isShopOpen) return;
                 handleCanvasClick(e);
@@ -848,21 +848,17 @@
             if (!currentNearbyItem) return;
 
             const rect = canvas.getBoundingClientRect();
-            // 計算點擊位置相對於 canvas 內部 1600x900 解析度的座標
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             const clickCanvasX = (clientTouch.clientX - rect.left) * scaleX;
             const clickCanvasY = (clientTouch.clientY - rect.top) * scaleY;
 
-            // 轉換為遊戲世界座標 (World Coordinates)
             const worldX = clickCanvasX / zoom + camera.x;
             const worldY = clickCanvasY / zoom + camera.y;
 
-            // 頭頂手掌圖示在遊戲世界的渲染位置
             const handWorldX = player.x;
             const handWorldY = player.y - 20;
 
-            // 判斷點擊距離是否在手掌圖示周圍 35 像素以內
             const dist = Math.hypot(worldX - handWorldX, worldY - handWorldY);
             if (dist <= 35) {
                 initAudio();
@@ -958,7 +954,7 @@
         function updatePauseDescription() {
             let desc = "";
             if (!playerInventory) {
-                desc += `<b style="color: #94a3b8;">目前手持道具：無</b><br><span style="font-size: 13px; color: #64748b;">點擊頭頂手掌圖示即可撿起！</span><br><br>`;
+                desc += `<b style="color: #94a3b8;">目前手持道具：無</b><br><span style="font-size: 13px; color: #64748b;">點擊頭頂手掌圖示即可直接撿起！</span><br><br>`;
             } else if (playerInventory.type === '手槍') {
                 desc += `<b style="color: #facc15;">🔫 手槍 (具備保命功能)</b><br><span style="font-size: 13px; color: #cbd5e1;">發射可消滅光束內怪物。<br><span style="color: #34d399; font-weight: bold;">🛡️ 被咬時自動抵扣保命！</span></span><br><br>`;
             } else if (playerInventory.type === '鏟子') {
@@ -1483,8 +1479,7 @@
                 player.dirX = dx;
                 player.dirY = dy;
 
-                let isSprinting = keys['Shift'];
-                let currentSpeed = isSprinting ? PLAYER_SHIFT_SPEED : PLAYER_NORMAL_SPEED;
+                let currentSpeed = PLAYER_NORMAL_SPEED;
 
                 let nextX = player.x + dx * currentSpeed;
                 if (!checkCollision(nextX, player.y, player.radius)) player.x = nextX;
@@ -1493,7 +1488,7 @@
                 if (!checkCollision(player.x, nextY, player.radius)) player.y = nextY;
 
                 let now = Date.now();
-                let stepInterval = isSprinting ? 280 : 380;
+                let stepInterval = 320;
                 if (now - lastPlayerFootstepTime > stepInterval) {
                     playPlayerFootstep();
                     lastPlayerFootstepTime = now;
@@ -1994,7 +1989,7 @@
                 ctx.restore();
             }
 
-            // --- 玩家頭頂手掌圖示 (在迷霧繪製完成後繪製，確保不被遮住) ---
+            // --- 玩家頭頂手掌圖示 (在迷霧繪製完成後繪製，點擊直接撿取/互換) ---
             currentNearbyItem = null;
             let minDist = 40;
             for (let item of items) {
@@ -2018,7 +2013,6 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // 光暈效果
                 ctx.shadowColor = playerInventory === null ? 'rgba(56, 189, 248, 0.9)' : 'rgba(251, 191, 36, 0.9)';
                 ctx.shadowBlur = 10;
 
