@@ -673,8 +673,7 @@
             } catch(e) {}
         }
 
-        const PLAYER_NORMAL_SPEED = 3;
-        const PLAYER_SHIFT_SPEED = 3;
+        const PLAYER_SPEED = 3;
 
         let player = {
             x: 0,
@@ -860,7 +859,7 @@
             const handWorldY = player.y - 20;
 
             const dist = Math.hypot(worldX - handWorldX, worldY - handWorldY);
-            if (dist <= 35) {
+            if (dist <= 45) {
                 initAudio();
                 pickupOrSwapItem(currentNearbyItem);
             }
@@ -1277,7 +1276,7 @@
 
         function tryInteractItem() {
             let closestItem = null;
-            let minDist = 40;
+            let minDist = 45;
 
             for (let item of items) {
                 let dist = Math.hypot(player.x - item.x, player.y - item.y);
@@ -1479,7 +1478,7 @@
                 player.dirX = dx;
                 player.dirY = dy;
 
-                let currentSpeed = PLAYER_NORMAL_SPEED;
+                let currentSpeed = PLAYER_SPEED;
 
                 let nextX = player.x + dx * currentSpeed;
                 if (!checkCollision(nextX, player.y, player.radius)) player.x = nextX;
@@ -2099,7 +2098,7 @@
             }
         });
 
-        // 觸控控制初始化
+        // 觸控/滑鼠點擊控制初始化
         initTouchControls();
         generateMaze();
         render();
