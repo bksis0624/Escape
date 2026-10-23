@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>迷宮逃脫 - 手機橫版 16:9 (1600x900)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #020617;
+            color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .pixel-font {
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* 16:9 遊戲主視窗外框容器 */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 56.25vw; /* 16:9 比例 (9 / 16 = 0.5625) */
+            max-width: 177.78vh; /* 16:9 比例 (16 / 9 = 1.7778) */
+            max-height: 100vh;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 頂部 HUD 狀態列 */
+        header {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 96%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid #334155;
+            border-radius: 12px;
+            backdrop-filter: blur(6px);
+            z-index: 15;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .hud-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .hud-badge {
+            background: rgba(30, 41, 59, 0.85);
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        /* 遊戲畫布 - 固定 1600x900 解析度渲染 */
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: #000;
+        }
+
+        /* 左下角觸控搖桿 */
+        #joystick-container {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        #joystick-stick {
+            width: 48px;
+            height: 48px;
+            background: rgba(34, 211, 238, 0.6);
+            border: 2px solid #22d3ee;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+            pointer-events: none;
+            transition: transform 0.05s ease-out;
+        }
+
+        /* 右下角手機按鈕 HUD */
+        #touch-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 20;
+            display: grid;
+            grid-template-columns: repeat(3, 52px);
+            gap: 8px;
+            align-items: center;
+            justify-items: center;
+        }
+
+        .touch-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #334155;
+            color: #f8fafc;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            transition: transform 0.1s, background 0.1s, border-color 0.1s;
+        }
+
+        .touch-btn:active, .touch-btn.active {
+            transform: scale(0.9);
+            background: rgba(34, 211, 238, 0.3);
+            border-color: #22d3ee;
+        }
+
+        .touch-btn-lg {
+            width: 60px;
+            height: 60px;
+            font-size: 22px;
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.25);
+        }
+
+        /* 道具背包 HUD */
+        #inventory-hud {
+            position: absolute;
+            top: 54px;
+            right: 20px;
+            width: 46px;
+            height: 46px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 15;
+            pointer-events: none;
+            transition: all 0.2s;
+        }
+        #inventory-hud.has-item {
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.25);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+        }
+
+        /* 全螢幕覆蓋彈窗 */
+        .screen-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.92);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            padding: 20px;
+            text-align: center;
+        }
+
+        button.action-btn {
+            font-family: monospace;
+            background: #06b6d4;
+            color: #020617;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(6, 182, 212, 0.3);
+            transition: transform 0.1s, background 0.2s;
+            margin: 4px;
+        }
+        button.action-btn:active { transform: scale(0.95); }
+
+        input.text-input {
+            font-family: monospace;
+            background: #0f172a;
+            border: 2px solid #334155;
+            color: #f8fafc;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 12px;
+            outline: none;
+            width: 80%;
+            max-width: 320px;
+        }
+        input.text-input:focus { border-color: #06b6d4; }
+
+        .leaderboard-list {
+            width: 100%;
+            max-width: 480px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0f172a;
+            border: 1.5px solid #1e293b;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            padding: 6px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            font-size: 14px;
+            font-family: monospace;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 220px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            padding: 4px;
+        }
+        .shop-item-card {
+            background: #0f172a;
+            border: 1.5px solid #334155;
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .shop-buy-btn {
+            font-family: monospace;
+            background: #06b6d4;
+            color: #020617;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* 直向旋轉提示 */
+        #orientation-warning {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #020617;
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        @media screen and (orientation: portrait) {
+            #orientation-warning { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 轉屏提示 (Portrait 直向轉橫向提示) -->
+    <div id="orientation-warning">
+        <div style="font-size: 48px; margin-bottom: 16px;">🔄</div>
+        <h2 style="color: #22d3ee; margin: 0 0 8px 0;">請將手機旋轉至橫向</h2>
+        <p style="color: #94a3b8; font-size: 14px; margin: 0;">獲得最佳 16:9 遊戲視野與雙手觸控體驗</p>
+    </div>
+
+    <!-- 16:9 主遊戲視窗容器 -->
+    <div id="game-container">
+        <!-- HUD 頂端列 -->
+        <header>
+            <div class="hud-group">
+                <div style="width: 10px; height: 10px; background: #22d3ee; border-radius: 50%;"></div>
+                <h1 class="pixel-font" style="font-size: 14px; color: #22d3ee; margin: 0;">迷宮逃脫</h1>
+            </div>
+            <div class="hud-group">
+                <div class="hud-badge" title="計時">
+                    <span style="color: #a855f7;">⏱️</span>
+                    <span id="timer-display" class="pixel-font" style="color: #f8fafc;">00:00</span>
+                </div>
+                <div id="battery-bar" class="hud-badge" style="gap: 2px;">
+                    <div class="battery-cell" data-index="0" style="width: 6px; height: 12px; background: #000; border: 1px solid #475569; border-radius: 2px;"></div>
+                    <div class="battery-cell" data-index="1" style="width: 6px; height: 12px; background: #000; border: 1px solid #475569; border-radius: 2px;"></div>
+                    <div class="battery-cell" data-index="2" style="width: 6px; height: 12px; background: #000; border: 1px solid #475569; border-radius: 2px;"></div>
+                    <div class="battery-cell" data-index="3" style="width: 6px; height: 12px; background: #000; border: 1px solid #475569; border-radius: 2px;"></div>
+                    <div class="battery-cell" data-index="4" style="width: 6px; height: 12px; background: #000; border: 1px solid #475569; border-radius: 2px;"></div>
+                </div>
+                <div class="hud-badge">
+                    <span id="level-display" class="pixel-font" style="color: #38bdf8;">1 / 16 層</span>
+                </div>
+                <div class="hud-badge">
+                    <span id="coin-display" class="pixel-font" style="color: #fbbf24;">💰 x10</span>
+                </div>
+                <div class="hud-badge">
+                    <span id="key-display" class="pixel-font" style="color: #f43f5e;">🔑 未集齊</span>
+                </div>
+                <div class="hud-badge" title="🏃 速度 / 🔦 距離">
+                    <span style="color: #34d399;">🏃</span><span id="speed-display" class="pixel-font" style="color: #f8fafc;">2</span>
+                    <span style="color: #facc15; margin-left: 4px;">🔦</span><span id="flashlight-display" class="pixel-font" style="color: #f8fafc;">260</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 畫布設定為橫向 1600x900 高解析度 -->
+        <canvas id="gameCanvas" width="1600" height="900"></canvas>
+        
+        <!-- 背包 HUD -->
+        <div id="inventory-hud"></div>
+
+        <!-- 左下角觸控搖桿 -->
+        <div id="joystick-container">
+            <div id="joystick-stick"></div>
+        </div>
+
+        <!-- 右下角手機控制按鈕區 -->
+        <div id="touch-controls">
+            <div class="touch-btn" id="btn-shop" title="商店 (C)">🛒</div>
+            <div class="touch-btn" id="btn-help" title="說明 (Q)">❓</div>
+            <div class="touch-btn" id="btn-light" title="手電筒 (F)">🔦</div>
+            <div class="touch-btn touch-btn-lg" id="btn-use" title="使用道具 (Space)">🎒</div>
+            <div class="touch-btn touch-btn-lg" id="btn-interact" title="互動撿取 (E)">🖐️</div>
+            <div class="touch-btn touch-btn-lg" id="btn-sprint" title="按住衝刺 (Shift)">⚡</div>
+        </div>
+
+        <!-- 開始畫面 -->
+        <div id="start-screen" class="screen-overlay">
+            <h2 class="pixel-font" style="font-size: 28px; color: #22d3ee; margin: 0 0 10px 0;">迷宮逃脫</h2>
+            <p style="color: #cbd5e1; font-size: 14px; max-width: 460px; line-height: 1.5; margin-bottom: 16px;">
+                挑戰 16 層黑暗迷宮！尋找鑰匙開啟大門、收集金幣與燈泡強化手電筒、利用道具躲避怪物，逃出生天！
+            </p>
+            <div style="display: flex; gap: 10px;">
+                <button id="start-btn" class="action-btn">開始探索</button>
+                <button id="leaderboard-btn" class="action-btn" style="background: #334155; color: #f8fafc;">🏆 排行榜</button>
+            </div>
+        </div>
+
+        <!-- 商店畫面 -->
+        <div id="shop-screen" class="screen-overlay" style="display: none;">
+            <h2 class="pixel-font" style="font-size: 22px; color: #34d399; margin: 0 0 4px 0;">🛒 金幣商店</h2>
+            <p style="color: #fbbf24; font-size: 14px; margin: 0 0 10px 0;">持有：<span id="shop-coin-display">💰 x10</span></p>
+            
+            <div class="shop-grid">
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">💡</span>
+                    <span style="font-size: 13px; font-weight: bold;">燈泡</span>
+                    <span style="font-size: 11px; color: #fbbf24;">30 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('燈泡', 30)">購買</button>
+                </div>
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">⛏️</span>
+                    <span style="font-size: 13px; font-weight: bold;">鏟子</span>
+                    <span style="font-size: 11px; color: #fbbf24;">3 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('鏟子', 3)">購買</button>
+                </div>
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">🔫</span>
+                    <span style="font-size: 13px; font-weight: bold;">手槍</span>
+                    <span style="font-size: 11px; color: #fbbf24;">7 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('手槍', 7)">購買</button>
+                </div>
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">🗺️</span>
+                    <span style="font-size: 13px; font-weight: bold;">地圖</span>
+                    <span style="font-size: 11px; color: #fbbf24;">7 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('地圖', 7)">購買</button>
+                </div>
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">🧲</span>
+                    <span style="font-size: 13px; font-weight: bold;">磁鐵</span>
+                    <span style="font-size: 11px; color: #fbbf24;">12 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('磁鐵', 12)">購買</button>
+                </div>
+                <div class="shop-item-card">
+                    <span style="font-size: 20px;">🔑</span>
+                    <span style="font-size: 13px; font-weight: bold;">鑰匙</span>
+                    <span style="font-size: 11px; color: #fbbf24;">16 💰</span>
+                    <button class="shop-buy-btn" onclick="buyItem('鑰匙', 16)">購買</button>
+                </div>
+            </div>
+
+            <button id="close-shop-btn" class="action-btn" style="font-size: 14px; padding: 6px 16px;">關閉商店</button>
+        </div>
+
+        <!-- 暫停 / 道具說明畫面 -->
+        <div id="pause-screen" class="screen-overlay" style="display: none;">
+            <h2 class="pixel-font" style="font-size: 22px; color: #fbbf24; margin: 0 0 10px 0;">遊戲暫停 - 道具說明</h2>
+            <div id="pause-item-desc" style="color: #cbd5e1; font-size: 14px; max-width: 440px; margin-bottom: 12px; line-height: 1.4; background: rgba(15, 23, 42, 0.8); padding: 12px; border-radius: 10px; border: 1.5px solid #334155;">
+                載入中...
+            </div>
+            <button id="resume-btn" class="action-btn">繼續遊戲</button>
+        </div>
+
+        <!-- 遊戲結束畫面 -->
+        <div id="gameover-screen" class="screen-overlay" style="display: none;">
+            <h2 id="gameover-title" class="pixel-font" style="font-size: 26px; color: #f43f5e; margin: 0 0 6px 0;">遊戲結束</h2>
+            <p style="color: #cbd5e1; font-size: 16px; margin: 0 0 4px 0;">
+                到達 <span id="final-score" style="color: #fbbf24; font-weight: bold;">1</span> 層！
+            </p>
+            <p style="color: #a855f7; font-size: 14px; margin: 0 0 12px 0;">
+                總花費時間：<span id="final-time" style="font-weight: bold;">00:00</span>
+            </p>
+            <input type="text" id="player-name-input" class="text-input" placeholder="請輸入名字" maxlength="12">
+            <br>
+            <button id="submit-score-btn" class="action-btn">送出成績</button>
+        </div>
+
+        <!-- 排行榜畫面 -->
+        <div id="leaderboard-screen" class="screen-overlay" style="display: none;">
+            <h2 class="pixel-font" style="font-size: 22px; color: #fbbf24; margin: 0 0 10px 0;">🏆 英雄排行榜 (Top 100)</h2>
+            <div id="leaderboard-list" class="leaderboard-list"></div>
+            <button id="back-to-start-btn" class="action-btn">返回首頁</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const keyDisplay = document.getElementById('key-display');
+        const coinDisplay = document.getElementById('coin-display');
+        const levelDisplay = document.getElementById('level-display');
+        const speedDisplay = document.getElementById('speed-display');
+        const flashlightDisplay = document.getElementById('flashlight-display');
+        const shopCoinDisplay = document.getElementById('shop-coin-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const inventoryHud = document.getElementById('inventory-hud');
+        const batteryCells = document.querySelectorAll('.battery-cell');
+        
+        const startScreen = document.getElementById('start-screen');
+        const shopScreen = document.getElementById('shop-screen');
+        const pauseScreen = document.getElementById('pause-screen');
+        const gameoverScreen = document.getElementById('gameover-screen');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+
+        const startBtn = document.getElementById('start-btn');
+        const closeShopBtn = document.getElementById('close-shop-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const leaderboardBtn = document.getElementById('leaderboard-btn');
+        const submitScoreBtn = document.getElementById('submit-score-btn');
+        const backToStartBtn = document.getElementById('back-to-start-btn');
+        
+        const playerNameInput = document.getElementById('player-name-input');
+        const finalScoreSpan = document.getElementById('final-score');
+        const finalTimeSpan = document.getElementById('final-time');
+        const gameoverTitle = document.getElementById('gameover-title');
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const pauseItemDesc = document.getElementById('pause-item-desc');
+
+        // 地圖與遊戲參數 (16:9 1600x900 寬度適應)
+        const tileSize = 32; 
+        const cols = 45;       
+        const rows = 33;       
+        const zoom = 1.8;
+        const maxLevel = 16;
+
+        let currentLevel = 1;
+        let totalCoins = 10;
+        let gameRunning = false;
+        let isPaused = false;
+        let isShopOpen = false;
+        let fogEnabled = true; 
+        let animationFrameId = null;
+
+        let totalBulbPoints = 0; 
+        let gameStartTime = 0;
+        let elapsedSeconds = 0;
+        let timerInterval = null;
+
+        let audioCtx = null;
+        let lastPlayerFootstepTime = 0;
+
+        // 手機搖桿與觸控變數
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+        let isSprintingTouch = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playPlayerFootstep() {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
+        function playZombieFootstep(monsterX, monsterY) {
+            if (!audioCtx) return;
+            try {
+                let dx = monsterX - player.x;
+                let dy = monsterY - player.y;
+                let distance = Math.hypot(dx, dy);
+                let maxHearingDistance = 350; 
+                if (distance > maxHearingDistance) return;
+
+                let volume = (1 - (distance / maxHearingDistance)) * 0.18;
+                if (volume <= 0.005) return;
+
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
+        function playZombieSpotAlert() {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); 
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        function playShopBuySound() {
+            if (!audioCtx) return;
+            try {
+                const notes = [1046.5, 1318.5, 1567.98, 2093.0]; 
+                notes.forEach((freq, idx) => {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.06);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.06 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + idx * 0.06);
+                    osc.stop(audioCtx.currentTime + idx * 0.06 + 0.3);
+                });
+            } catch(e) {}
+        }
+
+        function playGunShotSound() {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {}
+        }
+
+        function playLightningSound() {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch(e) {}
+        }
+
+        const PLAYER_NORMAL_SPEED = 2;
+        const PLAYER_SHIFT_SPEED = 3.2;
+
+        let player = {
+            x: 0,
+            y: 0,
+            radius: 8,       
+            dirX: 1,         
+            dirY: 0,
+            flashlightOn: true
+        };
+
+        let camera = {
+            x: 0,
+            y: 0,
+            width: canvas.width / zoom,
+            height: canvas.height / zoom
+        };
+
+        let key = { x: 0, y: 0, collected: false, radius: 20 };
+        let door = { r: 0, c: 0, width: tileSize, height: tileSize };
+        let monsters = []; 
+        let items = []; 
+        let coins = []; 
+        let lightning = null; 
+        let bulb = null; 
+        let playerInventory = null; 
+
+        let maze = [];
+        let explored = [];
+
+        const keys = {};
+
+        function formatTime(totalSec) {
+            let m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            let s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTimer() {
+            gameStartTime = Date.now() - (elapsedSeconds * 1000);
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isPaused && !isShopOpen && gameRunning) {
+                    elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+                    timerDisplay.textContent = formatTime(elapsedSeconds);
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // --- 初始化手機觸控搖桿與按鈕事件 ---
+        function initTouchControls() {
+            const joystickContainer = document.getElementById('joystick-container');
+            const joystickStick = document.getElementById('joystick-stick');
+
+            let touchId = null;
+            let center = { x: 0, y: 0 };
+
+            joystickContainer.addEventListener('touchstart', (e) => {
+                initAudio();
+                if (touchId !== null) return;
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                const rect = joystickContainer.getBoundingClientRect();
+                center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                updateJoystick(touch);
+            }, { passive: false });
+
+            window.addEventListener('touchmove', (e) => {
+                if (touchId === null) return;
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        updateJoystick(touch);
+                        break;
+                    }
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', (e) => {
+                if (touchId === null) return;
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        touchId = null;
+                        joystickActive = false;
+                        joystickVector = { x: 0, y: 0 };
+                        joystickStick.style.transform = `translate(0px, 0px)`;
+                        break;
+                    }
+                }
+            });
+
+            function updateJoystick(touch) {
+                let dx = touch.clientX - center.x;
+                let dy = touch.clientY - center.y;
+                let dist = Math.hypot(dx, dy);
+                let maxDist = 45;
+
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
+                joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+                joystickVector = { x: dx / maxDist, y: dy / maxDist };
+                joystickActive = dist > 5;
+            }
+
+            // 右下角按鈕綁定
+            document.getElementById('btn-shop').addEventListener('click', () => { initAudio(); toggleShop(); });
+            document.getElementById('btn-help').addEventListener('click', () => { initAudio(); togglePause(); });
+            document.getElementById('btn-light').addEventListener('click', () => { initAudio(); player.flashlightOn = !player.flashlightOn; });
+            document.getElementById('btn-use').addEventListener('click', () => { initAudio(); useInventoryItem(); });
+            document.getElementById('btn-interact').addEventListener('click', () => { initAudio(); tryInteractItem(); });
+
+            const sprintBtn = document.getElementById('btn-sprint');
+            sprintBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                initAudio();
+                isSprintingTouch = true;
+                sprintBtn.classList.add('active');
+            });
+            sprintBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                isSprintingTouch = false;
+                sprintBtn.classList.remove('active');
+            });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            initAudio(); 
+
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyE', 'KeyQ', 'KeyC'].includes(e.code) || e.key === ' ' || e.shiftKey) {
+                if (gameRunning || isPaused || isShopOpen) e.preventDefault();
+            }
+
+            if (e.code === 'KeyC' || e.key === 'c' || e.key === 'C') {
+                if (gameRunning && startScreen.style.display !== 'flex' && gameoverScreen.style.display !== 'flex' && leaderboardScreen.style.display !== 'flex') {
+                    toggleShop();
+                }
+            }
+
+            if ((e.code === 'KeyQ' || e.key === 'q' || e.key === 'Q')) {
+                if (gameRunning && !isShopOpen && startScreen.style.display !== 'flex' && gameoverScreen.style.display !== 'flex' && leaderboardScreen.style.display !== 'flex') {
+                    togglePause();
+                }
+            }
+
+            if (!isPaused && !isShopOpen && gameRunning) {
+                if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+                    player.flashlightOn = !player.flashlightOn;
+                }
+
+                if (e.code === 'KeyE' || e.key === 'e' || e.key === 'E') {
+                    tryInteractItem();
+                }
+
+                if (e.code === 'Space') {
+                    useInventoryItem();
+                }
+            }
+
+            keys[e.code] = true;
+            if (e.key === ' ') keys[' '] = true;
+            if (e.shiftKey) keys['Shift'] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            if (e.key === ' ') keys[' '] = false;
+            if (!e.shiftKey) keys['Shift'] = false;
+        });
+
+        function toggleShop() {
+            isShopOpen = !isShopOpen;
+            if (isShopOpen) {
+                cancelAnimationFrame(animationFrameId);
+                shopCoinDisplay.textContent = `💰 x${totalCoins}`;
+                shopScreen.style.display = 'flex';
+            } else {
+                shopScreen.style.display = 'none';
+                gameLoop();
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                cancelAnimationFrame(animationFrameId);
+                updatePauseDescription();
+                pauseScreen.style.display = 'flex';
+            } else {
+                pauseScreen.style.display = 'none';
+                gameLoop();
+            }
+        }
+
+        function updatePauseDescription() {
+            let desc = "";
+            if (!playerInventory) {
+                desc += `<b style="color: #94a3b8;">目前手持道具：無</b><br><span style="font-size: 13px; color: #64748b;">靠近道具點擊 🖐️ 撿起！</span><br><br>`;
+            } else if (playerInventory.type === '手槍') {
+                desc += `<b style="color: #facc15;">🔫 手槍 (具備保命功能)</b><br><span style="font-size: 13px; color: #cbd5e1;">點擊 🎒 發射，消滅光束內怪物。<br><span style="color: #34d399; font-weight: bold;">🛡️ 被咬時自動抵扣保命！</span></span><br><br>`;
+            } else if (playerInventory.type === '鏟子') {
+                desc += `<b style="color: #a855f7;">⛏️ 鏟子</b><br><span style="font-size: 13px; color: #cbd5e1;">點擊 🎒 可挖掉角色前方一格牆壁。</span><br><br>`;
+            } else if (playerInventory.type === '地圖') {
+                desc += `<b style="color: #38bdf8;">🗺️ 地圖</b><br><span style="font-size: 13px; color: #cbd5e1;">出現指向出口大門方向的黃色箭頭。<br><span style="color: #f43f5e; font-weight: bold;">⚠️ 前往下一層時自動銷毀。</span></span><br><br>`;
+            } else if (playerInventory.type === '磁鐵') {
+                desc += `<b style="color: #ec4899;">🧲 磁鐵 (稀有)</b><br><span style="font-size: 13px; color: #cbd5e1;">出現指向鑰匙方向的粉紅色箭頭。</span><br><br>`;
+            }
+            let activeCount = getActiveBatteryCount();
+            desc += `<span style="color: #fbbf24; font-size: 13px;">💡 目前有效亮燈：${activeCount} 格 (加成距離：+${activeCount * 100})</span>`;
+            pauseItemDesc.innerHTML = desc;
+        }
+
+        resumeBtn.addEventListener('click', () => {
+            if (isPaused) togglePause();
+        });
+
+        function collectBatteryCell() {
+            playLightningSound();
+            totalBulbPoints = Math.min(15, totalBulbPoints + 3);
+            updateBatteryUI();
+            updateStatusUI();
+        }
+
+        function handleLevelTransitionBattery() {
+            if (totalBulbPoints > 0) {
+                totalBulbPoints -= 1; 
+            }
+            updateBatteryUI();
+        }
+
+        function getActiveBatteryCount() {
+            let count = 0;
+            for (let i = 0; i < 5; i++) {
+                let cellPoints = Math.max(0, Math.min(3, totalBulbPoints - (i * 3)));
+                if (cellPoints > 0) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function getFlashlightBonusDist() {
+            return getActiveBatteryCount() * 100; 
+        }
+
+        function updateBatteryUI() {
+            batteryCells.forEach((cell, idx) => {
+                let cellPoints = Math.max(0, Math.min(3, totalBulbPoints - (idx * 3)));
+                let hexColor = '#000000';
+                
+                if (cellPoints === 3) hexColor = '#22c55e'; 
+                else if (cellPoints === 2) hexColor = '#f97316'; 
+                else if (cellPoints === 1) hexColor = '#ef4444'; 
+
+                cell.style.backgroundColor = hexColor;
+            });
+        }
+
+        function generateMaze() {
+            maze = Array(rows).fill(0).map(() => Array(cols).fill(1));
+            explored = Array(rows).fill(0).map(() => Array(cols).fill(false));
+
+            function carveWideBlock(r, c) {
+                for (let dr = 0; dr < 2; dr++) {
+                    for (let dc = 0; dc < 2; dc++) {
+                        let tr = r + dr;
+                        let tc = c + dc;
+                        if (tr > 0 && tr < rows - 1 && tc > 0 && tc < cols - 1) {
+                            maze[tr][tc] = 0;
+                        }
+                    }
+                }
+            }
+
+            let startR = 1, startC = 1;
+            carveWideBlock(startR, startC);
+
+            let stack = [{r: startR, c: startC}];
+
+            while(stack.length > 0) {
+                let curr = stack[stack.length - 1];
+                let neighbors = [];
+                const directions = [{r: -4, c: 0}, {r: 4, c: 0}, {r: 0, c: -4}, {r: 0, c: 4}];
+
+                for(let d of directions) {
+                    let nr = curr.r + d.r;
+                    let nc = curr.c + d.c;
+                    if(nr > 0 && nr < rows - 2 && nc > 0 && nc < cols - 2) {
+                        if(maze[nr][nc] === 1) neighbors.push({r: nr, c: nc});
+                    }
+                }
+
+                if(neighbors.length > 0) {
+                    let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    carveWideBlock(Math.floor((curr.r + next.r) / 2), Math.floor((curr.c + next.c) / 2));
+                    carveWideBlock(next.r, next.c);
+                    stack.push({r: next.r, c: next.c});
+                } else {
+                    stack.pop();
+                }
+            }
+
+            let extraBreaks = Math.floor((cols * rows) * 0.05);
+            for (let i = 0; i < extraBreaks; i++) {
+                let rr = Math.floor(Math.random() * (rows - 4)) + 2;
+                let rc = Math.floor(Math.random() * (cols - 4)) + 2;
+                carveWideBlock(rr, rc);
+            }
+
+            let emptyCells = [];
+            for(let r = 1; r < rows - 1; r++) {
+                for(let c = 1; c < cols - 1; c++) {
+                    if(maze[r][c] === 0) emptyCells.push({r, c});
+                }
+            }
+            emptyCells.sort(() => Math.random() - 0.5);
+
+            let pCell = emptyCells[0];
+            player.x = pCell.c * tileSize + tileSize / 2;
+            player.y = pCell.r * tileSize + tileSize / 2;
+            player.dirX = 1;
+            player.dirY = 0;
+
+            updateCamera(true);
+
+            let validKeys = emptyCells.filter(cell => Math.hypot(cell.c - pCell.c, cell.r - pCell.r) > Math.min(cols, rows) / 3);
+            if(validKeys.length === 0) validKeys = emptyCells;
+            let kCell = validKeys[Math.floor(Math.random() * validKeys.length)];
+            key.x = kCell.c * tileSize + tileSize / 2;
+            key.y = kCell.r * tileSize + tileSize / 2;
+            key.collected = false;
+
+            let wallCells = [];
+            for(let r = 1; r < rows - 1; r++) {
+                for(let c = 1; c < cols - 1; c++) {
+                    if(maze[r][c] === 1) {
+                        let hasAdjacentEmpty = (maze[r-1][c] === 0) || (maze[r+1][c] === 0) || (maze[r][c-1] === 0) || (maze[r][c+1] === 0);
+                        if (hasAdjacentEmpty && Math.hypot(c - pCell.c, r - pCell.r) > Math.min(cols, rows) / 2.5) {
+                            wallCells.push({r, c});
+                        }
+                    }
+                }
+            }
+            if(wallCells.length === 0) {
+                for(let r = 1; r < rows - 1; r++) {
+                    for(let c = 1; c < cols - 1; c++) {
+                        if(maze[r][c] === 1) wallCells.push({r, c});
+                    }
+                }
+            }
+            wallCells.sort(() => Math.random() - 0.5);
+            let dWall = wallCells[0];
+            door.r = dWall.r;
+            door.c = dWall.c;
+
+            items = [];
+            let itemPool = [
+                { name: '手槍', icon: '🔫', color: '#facc15', weight: 75 },
+                { name: '鏟子', icon: '⛏️', color: '#a855f7', weight: 15 },
+                { name: '地圖', icon: '🗺️', color: '#38bdf8', weight: 5 },
+                { name: '磁鐵', icon: '🧲', color: '#ec4899', weight: 5 }
+            ];
+
+            function getRandomItemType() {
+                let totalWeight = itemPool.reduce((sum, item) => sum + item.weight, 0);
+                let rand = Math.random() * totalWeight;
+                let currentSum = 0;
+                for (let item of itemPool) {
+                    currentSum += item.weight;
+                    if (rand <= currentSum) return { name: item.name, icon: item.icon, color: item.color };
+                }
+                return { name: itemPool[0].name, icon: itemPool[0].icon, color: itemPool[0].color };
+            }
+
+            let validItemsCells = emptyCells.filter(cell => Math.hypot(cell.c - pCell.c, cell.r - pCell.r) > 2);
+            validItemsCells.sort(() => Math.random() - 0.5);
+
+            let spawnCount = Math.min(3, validItemsCells.length);
+            for (let i = 0; i < spawnCount; i++) {
+                let iCell = validItemsCells[i];
+                let chosenType = getRandomItemType();
+                items.push({
+                    x: iCell.c * tileSize + tileSize / 2,
+                    y: iCell.r * tileSize + tileSize / 2,
+                    radius: 16, 
+                    type: chosenType.name,
+                    icon: chosenType.icon,
+                    color: chosenType.color
+                });
+            }
+
+            lightning = null;
+            let availableIdx = spawnCount;
+            if (Math.random() < 0.01 && validItemsCells.length > availableIdx) {
+                let lCell = validItemsCells[availableIdx++];
+                lightning = { x: lCell.c * tileSize + tileSize / 2, y: lCell.r * tileSize + tileSize / 2, radius: 16, collected: false };
+            }
+
+            bulb = null;
+            if (validItemsCells.length > availableIdx && Math.random() < 0.01) { 
+                let bCell = validItemsCells[availableIdx++];
+                bulb = { x: bCell.c * tileSize + tileSize / 2, y: bCell.r * tileSize + tileSize / 2, radius: 16, collected: false };
+            }
+
+            coins = [];
+            let validCoinCells = emptyCells.filter(cell => Math.hypot(cell.c - pCell.c, cell.r - pCell.r) > 1);
+            validCoinCells.sort(() => Math.random() - 0.5);
+            for (let cell of validCoinCells) {
+                if (Math.random() < 0.01) {
+                    coins.push({ x: cell.c * tileSize + tileSize / 2, y: cell.r * tileSize + tileSize / 2, radius: 14, collected: false });
+                }
+            }
+
+            monsters = [];
+            let validMonsters = emptyCells.filter(cell => Math.hypot(cell.c - pCell.c, cell.r - pCell.r) > 3);
+            validMonsters.sort(() => Math.random() - 0.5);
+
+            let stalkerCount = Math.floor((currentLevel - 1) / 4) + 1;
+            for (let i = 0; i < stalkerCount; i++) {
+                if (validMonsters.length > 0) {
+                    let sCell = validMonsters.pop();
+                    monsters.push({
+                        x: sCell.c * tileSize + tileSize / 2,
+                        y: sCell.r * tileSize + tileSize / 2,
+                        radius: 9, speed: 0.9, type: 'stalker', dirX: 0, dirY: 1, spotted: false, lastFootstepTime: 0
+                    });
+                }
+            }
+
+            let normalMonsterCount = Math.min(15, 2 + currentLevel);
+            for (let i = 0; i < Math.min(normalMonsterCount, validMonsters.length); i++) {
+                let mCell = validMonsters[i];
+                monsters.push({
+                    x: mCell.c * tileSize + tileSize / 2,
+                    y: mCell.r * tileSize + tileSize / 2,
+                    radius: 9, speed: 1.5, type: 'normal', dirX: 0, dirY: 1, spotted: false, lastFootstepTime: 0
+                });
+            }
+
+            updateStatusUI();
+        }
+
+        function updateCamera(instant = false) {
+            let targetX = player.x - camera.width / 2;
+            let targetY = player.y - camera.height / 2;
+
+            let maxX = cols * tileSize - camera.width;
+            let maxY = rows * tileSize - camera.height;
+
+            targetX = Math.max(0, Math.min(targetX, maxX));
+            targetY = Math.max(0, Math.min(targetY, maxY));
+
+            if (instant) {
+                camera.x = targetX;
+                camera.y = targetY;
+            } else {
+                camera.x += (targetX - camera.x) * 0.1;
+                camera.y += (targetY - camera.y) * 0.1;
+            }
+        }
+
+        function triggerGameOver(isWin = false) {
+            gameRunning = false;
+            stopTimer();
+            cancelAnimationFrame(animationFrameId);
+            
+            if (isWin) {
+                gameoverTitle.textContent = "恭喜通關！";
+                gameoverTitle.style.color = "#34d399";
+            } else {
+                gameoverTitle.textContent = "遊戲結束";
+                gameoverTitle.style.color = "#f43f5e";
+            }
+
+            finalScoreSpan.textContent = currentLevel;
+            finalTimeSpan.textContent = formatTime(elapsedSeconds);
+            playerNameInput.value = '';
+            gameoverScreen.style.display = 'flex';
+        }
+
+        function saveScoreAndReturnHome(name, score) {
+            if (!name.trim()) name = '無名英雄';
+            let leaderboard = JSON.parse(localStorage.getItem('maze_escape_leaderboard') || '[]');
+            leaderboard.push({ name: name.trim(), score: score, time: elapsedSeconds, coins: totalCoins, date: new Date().toLocaleDateString() });
+            
+            leaderboard.sort((a, b) => b.score - a.score || a.time - b.time || b.coins - a.coins);
+            if (leaderboard.length > 100) leaderboard = leaderboard.slice(0, 100);
+
+            localStorage.setItem('maze_escape_leaderboard', JSON.stringify(leaderboard));
+
+            gameoverScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+        }
+
+        function renderLeaderboard() {
+            let leaderboard = JSON.parse(localStorage.getItem('maze_escape_leaderboard') || '[]');
+            leaderboardList.innerHTML = '';
+
+            if (leaderboard.length === 0) {
+                leaderboardList.innerHTML = '<div style="text-align: center; color: #64748b; padding: 16px;">尚無排行榜紀錄</div>';
+                return;
+            }
+
+            leaderboard.forEach((entry, idx) => {
+                let timeStr = formatTime(entry.time !== undefined ? entry.time : 0);
+                let item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <span style="color: #94a3b8;">#${idx + 1} <b style="color: #f8fafc; margin-left: 8px;">${entry.name}</b></span>
+                    <div>
+                        <span style="color: #a855f7; margin-right: 10px;">⏱️ ${timeStr}</span>
+                        <span style="color: #fbbf24; font-weight: bold;">第 ${entry.score} 層</span>
+                    </div>
+                `;
+                leaderboardList.appendChild(item);
+            });
+        }
+
+        function tryInteractItem() {
+            let closestItem = null;
+            let minDist = 40;
+
+            for (let item of items) {
+                let dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestItem = item;
+                }
+            }
+
+            if (closestItem) {
+                if (playerInventory === null) {
+                    playerInventory = closestItem;
+                    items = items.filter(i => i !== closestItem);
+                } else {
+                    let oldInventory = playerInventory;
+                    oldInventory.x = closestItem.x;
+                    oldInventory.y = closestItem.y;
+                    items.push(oldInventory);
+
+                    playerInventory = closestItem;
+                    items = items.filter(i => i !== closestItem);
+                }
+                updateStatusUI();
+            }
+        }
+
+        function useInventoryItem() {
+            if (!playerInventory) return;
+
+            if (playerInventory.type === '手槍') {
+                let targetMonster = null;
+                for (let m of monsters) {
+                    if (isPointInBeam(m.x, m.y)) {
+                        targetMonster = m;
+                        break;
+                    }
+                }
+                if (targetMonster) {
+                    playGunShotSound(); 
+                    monsters = monsters.filter(m => m !== targetMonster);
+                    playerInventory = null; 
+                }
+            } else if (playerInventory.type === '鏟子') {
+                let targetR = Math.floor((player.y + player.dirY * tileSize) / tileSize);
+                let targetC = Math.floor((player.x + player.dirX * tileSize) / tileSize);
+
+                if (targetR > 0 && targetR < rows - 1 && targetC > 0 && targetC < cols - 1) {
+                    if (maze[targetR][targetC] === 1) {
+                        maze[targetR][targetC] = 0; 
+                        playLightningSound();
+                        playerInventory = null; 
+                    }
+                }
+            }
+            updateStatusUI();
+        }
+
+        function buyItem(itemName, cost) {
+            if (totalCoins < cost) {
+                alert("金幣不夠！");
+                return;
+            }
+
+            playShopBuySound(); 
+
+            if (itemName === '鑰匙') {
+                if (key.collected) {
+                    alert("你已經擁有鑰匙了！");
+                    return;
+                }
+                totalCoins -= cost;
+                key.collected = true;
+            } else if (itemName === '燈泡') {
+                totalCoins -= cost;
+                collectBatteryCell(); 
+            } else {
+                let itemData = {
+                    '手槍': { type: '手槍', icon: '🔫', color: '#facc15' },
+                    '鏟子': { type: '鏟子', icon: '⛏️', color: '#a855f7' },
+                    '地圖': { type: '地圖', icon: '🗺️', color: '#38bdf8' },
+                    '磁鐵': { type: '磁鐵', icon: '🧲', color: '#ec4899' }
+                }[itemName];
+
+                if (!playerInventory) {
+                    playerInventory = itemData;
+                } else {
+                    let oldInventory = playerInventory;
+                    oldInventory.x = player.x + Math.random() * 20 - 10;
+                    oldInventory.y = player.y + Math.random() * 20 - 10;
+                    items.push(oldInventory);
+                    playerInventory = itemData;
+                }
+                totalCoins -= cost;
+            }
+            updateStatusUI();
+            shopCoinDisplay.textContent = `💰 x${totalCoins}`;
+            toggleShop();
+        }
+
+        function checkCollision(nx, ny, radius) {
+            const checkPoints = [
+                {x: nx - radius, y: ny - radius},
+                {x: nx + radius, y: ny - radius},
+                {x: nx - radius, y: ny + radius},
+                {x: nx + radius, y: ny + radius}
+            ];
+
+            for(let pt of checkPoints) {
+                let c = Math.floor(pt.x / tileSize);
+                let r = Math.floor(pt.y / tileSize);
+
+                if(r < 0 || r >= rows || c < 0 || c >= cols) return true;
+                if(maze[r][c] === 1) {
+                    if (r === door.r && c === door.c && key.collected) return false;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function castRay(angle, maxDistance) {
+            let step = 4;
+            let currentDist = 0;
+            let rx = player.x;
+            let ry = player.y;
+
+            while (currentDist < maxDistance) {
+                rx += Math.cos(angle) * step;
+                ry += Math.sin(angle) * step;
+                currentDist += step;
+
+                let c = Math.floor(rx / tileSize);
+                let r = Math.floor(ry / tileSize);
+
+                if (r < 0 || r >= rows || c < 0 || c >= cols) return { x: rx, y: ry, hit: true };
+                if (maze[r][c] === 1) return { x: rx, y: ry, hit: true };
+            }
+
+            return { x: player.x + Math.cos(angle) * maxDistance, y: player.y + Math.sin(angle) * maxDistance, hit: false };
+        }
+
+        function getFlashlightPolygon() {
+            if (!player.flashlightOn) return [];
+
+            let pAngle = Math.atan2(player.dirY, player.dirX); 
+            let fov = 1.2; 
+            let maxDist = 260 + getFlashlightBonusDist(); 
+            let raysCount = 35; 
+
+            let points = [{ x: player.x, y: player.y }];
+
+            for (let i = 0; i <= raysCount; i++) {
+                let angle = (pAngle - fov / 2) + (fov * (i / raysCount));
+                let res = castRay(angle, maxDist);
+                points.push({ x: res.x, y: res.y });
+            }
+
+            return points;
+        }
+
+        function isPointInAura(tx, ty) {
+            let dist = Math.hypot(tx - player.x, ty - player.y);
+            return dist <= (50 + getFlashlightBonusDist() * 0.2); 
+        }
+
+        function isPointInBeam(tx, ty) {
+            if (!player.flashlightOn) return false;
+            let maxDist = 280 + getFlashlightBonusDist();
+            let dist = Math.hypot(tx - player.x, ty - player.y);
+            if (dist > maxDist) return false;
+
+            let angleToTarget = Math.atan2(ty - player.y, tx - player.x);
+            let playerAngle = Math.atan2(player.dirY, player.dirX);
+            let angleDiff = Math.abs(angleToTarget - playerAngle);
+            if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+            if (angleDiff <= 0.7) {
+                let rayRes = castRay(angleToTarget, dist + 10);
+                let distToHit = Math.hypot(rayRes.x - player.x, rayRes.y - player.y);
+                if (distToHit >= dist - 15) return true;
+            }
+            return false;
+        }
+
+        function isPointIlluminated(tx, ty) {
+            if (!fogEnabled) return true; 
+            return isPointInAura(tx, ty) || isPointInBeam(tx, ty);
+        }
+
+        function updateGame() {
+            if (isPaused || isShopOpen) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            if (joystickActive) {
+                dx = joystickVector.x;
+                dy = joystickVector.y;
+            } else {
+                if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+                if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+                if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+                if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+            }
+
+            if (dx !== 0 || dy !== 0) {
+                let length = Math.hypot(dx, dy);
+                dx /= length;
+                dy /= length;
+
+                player.dirX = dx;
+                player.dirY = dy;
+
+                let isSprinting = keys['Shift'] || isSprintingTouch;
+                let currentSpeed = isSprinting ? PLAYER_SHIFT_SPEED : PLAYER_NORMAL_SPEED;
+
+                let nextX = player.x + dx * currentSpeed;
+                if (!checkCollision(nextX, player.y, player.radius)) player.x = nextX;
+
+                let nextY = player.y + dy * currentSpeed;
+                if (!checkCollision(player.x, nextY, player.radius)) player.y = nextY;
+
+                let now = Date.now();
+                let stepInterval = isSprinting ? 280 : 380;
+                if (now - lastPlayerFootstepTime > stepInterval) {
+                    playPlayerFootstep();
+                    lastPlayerFootstepTime = now;
+                }
+            }
+
+            updateCamera();
+
+            if (lightning && !lightning.collected) {
+                let distToLightning = Math.hypot(player.x - lightning.x, player.y - lightning.y);
+                if (distToLightning < player.radius + lightning.radius + 6) {
+                    lightning.collected = true;
+                    playLightningSound();
+                    
+                    if (currentLevel >= maxLevel) {
+                        triggerGameOver(true);
+                        return;
+                    }
+
+                    currentLevel++;
+                    handleLevelTransitionBattery();
+                    if (playerInventory && playerInventory.type === '地圖') playerInventory = null;
+                    generateMaze();
+                    return;
+                }
+            }
+
+            if (bulb && !bulb.collected) {
+                let distToBulb = Math.hypot(player.x - bulb.x, player.y - bulb.y);
+                if (distToBulb < player.radius + bulb.radius + 6) {
+                    bulb.collected = true;
+                    collectBatteryCell(); 
+                }
+            }
+
+            for (let coin of coins) {
+                if (!coin.collected) {
+                    let distToCoin = Math.hypot(player.x - coin.x, player.y - coin.y);
+                    if (distToCoin < player.radius + coin.radius + 4) {
+                        coin.collected = true;
+                        totalCoins++;
+                        updateStatusUI();
+                    }
+                }
+            }
+
+            for (let m of monsters) {
+                let shouldChase = (m.type === 'stalker') ? true : isPointInBeam(m.x, m.y);
+
+                if (isPointIlluminated(m.x, m.y)) {
+                    if (!m.spotted) {
+                        m.spotted = true;
+                        playZombieSpotAlert(); 
+                    }
+                } else {
+                    m.spotted = false;
+                }
+
+                let zombieMoved = false;
+                if (shouldChase) {
+                    let angleToPlayer = Math.atan2(player.y - m.y, player.x - m.x);
+                    let mdx = Math.cos(angleToPlayer);
+                    let mdy = Math.sin(angleToPlayer);
+
+                    m.dirX = mdx;
+                    m.dirY = mdy;
+
+                    let nextMX = m.x + mdx * m.speed;
+                    if (!checkCollision(nextMX, m.y, m.radius)) {
+                        m.x = nextMX;
+                        zombieMoved = true;
+                    }
+                    let nextMY = m.y + mdy * m.speed;
+                    if (!checkCollision(m.x, nextMY, m.radius)) {
+                        m.y = nextMY;
+                        zombieMoved = true;
+                    }
+                }
+
+                if (zombieMoved) {
+                    let now = Date.now();
+                    if (!m.lastFootstepTime) m.lastFootstepTime = 0;
+                    if (now - m.lastFootstepTime > 500) {
+                        playZombieFootstep(m.x, m.y);
+                        m.lastFootstepTime = now;
+                    }
+                }
+
+                let distToPlayer = Math.hypot(m.x - player.x, m.y - player.y);
+                if (distToPlayer < player.radius + m.radius) {
+                    if (playerInventory && playerInventory.type === '手槍') {
+                        playGunShotSound(); 
+                        playerInventory = null; 
+                        monsters = monsters.filter(mon => mon !== m); 
+                        updateStatusUI();
+                        break; 
+                    } else {
+                        triggerGameOver(false);
+                        return;
+                    }
+                }
+            }
+
+            if (!key.collected) {
+                let distToKey = Math.hypot(player.x - key.x, player.y - key.y);
+                if (distToKey < player.radius + key.radius + 6) {
+                    key.collected = true;
+                    updateStatusUI();
+                }
+            }
+
+            let doorCenterX = door.c * tileSize + tileSize / 2;
+            let doorCenterY = door.r * tileSize + tileSize / 2;
+            let distToDoor = Math.hypot(player.x - doorCenterX, player.y - doorCenterY);
+            
+            if (distToDoor < tileSize * 0.8) {
+                if (key.collected) {
+                    if (currentLevel >= maxLevel) {
+                        triggerGameOver(true);
+                        return;
+                    }
+
+                    currentLevel++;
+                    handleLevelTransitionBattery();
+                    if (playerInventory && playerInventory.type === '地圖') playerInventory = null;
+                    generateMaze(); 
+                    return;
+                }
+            }
+        }
+
+        function updateStatusUI() {
+            keyDisplay.innerHTML = key.collected ? '<span style="color: #34d399;">🔑 已集齊</span>' : '<span style="color: #f43f5e;">🔑 未集齊</span>';
+            coinDisplay.textContent = `💰 x${totalCoins}`;
+            levelDisplay.textContent = `${currentLevel} / ${maxLevel} 層`;
+
+            let isSprinting = keys['Shift'] || isSprintingTouch;
+            speedDisplay.textContent = isSprinting ? PLAYER_SHIFT_SPEED : PLAYER_NORMAL_SPEED;
+            flashlightDisplay.textContent = 260 + getFlashlightBonusDist();
+
+            if (playerInventory) {
+                inventoryHud.textContent = playerInventory.icon;
+                inventoryHud.classList.add('has-item');
+            } else {
+                inventoryHud.textContent = '';
+                inventoryHud.classList.remove('has-item');
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.scale(zoom, zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            for(let r = 0; r < rows; r++) {
+                for(let c = 0; c < cols; c++) {
+                    let tileX = c * tileSize;
+                    let tileY = r * tileSize;
+                    let tileCenterX = tileX + tileSize / 2;
+                    let tileCenterY = tileY + tileSize / 2;
+
+                    let illuminated = isPointIlluminated(tileCenterX, tileCenterY);
+                    if (illuminated) explored[r][c] = true;
+
+                    if (r === door.r && c === door.c) {
+                        if (illuminated || explored[r][c] || !fogEnabled) {
+                            ctx.save();
+                            if (key.collected) {
+                                ctx.shadowColor = 'rgba(250, 204, 21, 0.8)';
+                                ctx.shadowBlur = 15;
+                                ctx.fillStyle = '#064e3b';
+                            } else {
+                                ctx.shadowColor = 'rgba(239, 68, 68, 0.8)';
+                                ctx.shadowBlur = 10;
+                                ctx.fillStyle = '#7f1d1d';
+                            }
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                            ctx.strokeStyle = key.collected ? '#fbbf24' : '#ef4444';
+                            ctx.lineWidth = 2.5;
+                            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+
+                            let lockColor = key.collected ? '#fbbf24' : '#fca5a5';
+                            ctx.strokeStyle = lockColor;
+                            ctx.lineWidth = 3;
+                            
+                            ctx.beginPath();
+                            ctx.arc(tileCenterX, tileCenterY + 3, 8, 0, Math.PI * 2);
+                            ctx.fillStyle = lockColor;
+                            ctx.fill();
+                            ctx.stroke();
+
+                            ctx.beginPath();
+                            ctx.arc(tileCenterX, tileCenterY - 4, 6, Math.PI, 0, false);
+                            ctx.lineWidth = 2.5;
+                            ctx.stroke();
+
+                            ctx.restore();
+                        } else {
+                            ctx.fillStyle = '#000000';
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                        }
+                        continue;
+                    }
+
+                    if(illuminated || !fogEnabled) {
+                        if(maze[r][c] === 1) {
+                            ctx.fillStyle = '#dc2626';
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                            ctx.strokeStyle = '#991b1b';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+                        } else {
+                            ctx.fillStyle = '#0f172a';
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                            ctx.strokeStyle = '#1e293b';
+                            ctx.lineWidth = 0.5;
+                            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+                        }
+                    } else if(explored[r][c]) {
+                        if(maze[r][c] === 1) {
+                            ctx.fillStyle = '#450a0a';
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                        } else {
+                            ctx.fillStyle = '#030712';
+                            ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                        }
+                    } else {
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(tileX, tileY, tileSize, tileSize);
+                    }
+                }
+            }
+
+            if (lightning && !lightning.collected && isPointIlluminated(lightning.x, lightning.y)) {
+                ctx.save();
+                ctx.translate(lightning.x, lightning.y);
+                let scale = 1 + Math.sin(Date.now() / 120) * 0.2;
+                ctx.scale(scale, scale);
+                ctx.shadowColor = 'rgba(56, 189, 248, 0.9)';
+                ctx.shadowBlur = 12;
+                ctx.font = '28px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⚡', 0, 1);
+                ctx.restore();
+            }
+
+            if (bulb && !bulb.collected && isPointIlluminated(bulb.x, bulb.y)) {
+                ctx.save();
+                ctx.translate(bulb.x, bulb.y);
+                let scale = 1 + Math.sin(Date.now() / 120) * 0.2;
+                ctx.scale(scale, scale);
+                ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+                ctx.shadowBlur = 12;
+                ctx.font = '28px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💡', 0, 1);
+                ctx.restore();
+            }
+
+            for (let coin of coins) {
+                if (!coin.collected && isPointIlluminated(coin.x, coin.y)) {
+                    ctx.save();
+                    ctx.translate(coin.x, coin.y);
+                    let scale = 1 + Math.sin(Date.now() / 180) * 0.15;
+                    ctx.scale(scale, scale);
+                    ctx.shadowColor = 'rgba(251, 191, 36, 0.8)';
+                    ctx.shadowBlur = 10;
+                    ctx.font = '24px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💰', 0, 1);
+                    ctx.restore();
+                }
+            }
+
+            for (let item of items) {
+                if (isPointIlluminated(item.x, item.y)) {
+                    ctx.save();
+                    ctx.translate(item.x, item.y);
+                    let scale = 1 + Math.sin(Date.now() / 200) * 0.1;
+                    ctx.scale(scale, scale);
+                    ctx.fillStyle = item.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                    ctx.font = '24px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(item.icon, 0, 1);
+                    ctx.restore();
+                }
+            }
+
+            if(!key.collected && isPointIlluminated(key.x, key.y)) {
+                ctx.save();
+                ctx.translate(key.x, key.y);
+                let scale = 1 + Math.sin(Date.now() / 150) * 0.15;
+                ctx.scale(scale, scale);
+                ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
+                ctx.beginPath();
+                ctx.arc(0, 0, key.radius + 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.font = '32px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔑', 0, 2);
+                ctx.restore();
+            }
+
+            for (let m of monsters) {
+                if (isPointIlluminated(m.x, m.y)) {
+                    ctx.save();
+                    ctx.translate(m.x, m.y);
+                    let mAngle = Math.atan2(m.dirY, m.dirX);
+                    ctx.rotate(mAngle);
+
+                    if (m.type === 'stalker') {
+                        ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+                        ctx.shadowBlur = 12;
+                        ctx.fillStyle = '#581c87'; 
+                        ctx.beginPath();
+                        ctx.roundRect(-7, -7, 14, 14, 4);
+                        ctx.fill();
+                        ctx.strokeStyle = '#3b0764';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#c084fc'; 
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#7e22ce';
+                        ctx.fillRect(4, -8, 5, 3);
+                        ctx.fillRect(4, 5, 5, 3);
+
+                        ctx.fillStyle = '#38bdf8'; 
+                        ctx.beginPath();
+                        ctx.arc(2, -2.5, 1.5, 0, Math.PI * 2);
+                        ctx.arc(2, 2.5, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                    } else {
+                        ctx.shadowColor = 'rgba(74, 222, 128, 0.9)';
+                        ctx.shadowBlur = 10;
+                        ctx.fillStyle = '#166534';
+                        ctx.beginPath();
+                        ctx.roundRect(-7, -7, 14, 14, 4);
+                        ctx.fill();
+                        ctx.strokeStyle = '#14532d';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#4ade80';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#22c55e';
+                        ctx.fillRect(4, -8, 5, 3);
+                        ctx.fillRect(4, 5, 5, 3);
+
+                        ctx.fillStyle = '#ef4444';
+                        ctx.beginPath();
+                        ctx.arc(2, -2.5, 1.5, 0, Math.PI * 2);
+                        ctx.arc(2, 2.5, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.restore();
+
+                    ctx.save();
+                    ctx.translate(m.x, m.y - 18); 
+                    ctx.font = 'bold 16px monospace';
+                    ctx.fillStyle = '#ef4444';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(239, 68, 68, 0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.fillText('!', 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            if (playerInventory && playerInventory.type === '地圖') {
+                let doorCenterX = door.c * tileSize + tileSize / 2;
+                let doorCenterY = door.r * tileSize + tileSize / 2;
+                let angleToDoor = Math.atan2(doorCenterY - player.y, doorCenterX - player.x);
+                
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(angleToDoor);
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.moveTo(22, 0);
+                ctx.lineTo(14, -6);
+                ctx.lineTo(14, 6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            if (playerInventory && playerInventory.type === '磁鐵' && !key.collected) {
+                let angleToKey = Math.atan2(key.y - player.y, key.x - player.x);
+                
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(angleToKey);
+                ctx.fillStyle = '#ec4899';
+                ctx.shadowColor = 'rgba(236, 72, 153, 0.8)';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.moveTo(26, 0);
+                ctx.lineTo(16, -7);
+                ctx.lineTo(16, 7);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            let pAngle = Math.atan2(player.dirY, player.dirX);
+            ctx.rotate(pAngle);
+
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+            ctx.shadowBlur = 12;
+
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-4, -7, 8, 3);
+            ctx.fillRect(-4, 4, 8, 3);
+
+            ctx.fillStyle = '#06b6d4';
+            ctx.beginPath();
+            ctx.roundRect(-6, -6, 12, 12, 3);
+            ctx.fill();
+            ctx.strokeStyle = '#0891b2';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(1, -9, 6, 3);
+            ctx.fillRect(1, 6, 6, 3);
+
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(2, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+            ctx.restore(); 
+
+            if (fogEnabled) {
+                ctx.save();
+                let maskCanvas = document.createElement('canvas');
+                maskCanvas.width = canvas.width;
+                maskCanvas.height = canvas.height;
+                let mCtx = maskCanvas.getContext('2d');
+
+                mCtx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+                mCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+                mCtx.save();
+                mCtx.globalCompositeOperation = 'destination-out';
+                mCtx.scale(zoom, zoom);
+                mCtx.translate(-camera.x, -camera.y); 
+                
+                let flashlightPoly = getFlashlightPolygon();
+
+                if (player.flashlightOn && flashlightPoly.length > 0) {
+                    mCtx.beginPath();
+                    mCtx.moveTo(player.x, player.y);
+                    for (let i = 1; i < flashlightPoly.length; i++) {
+                        mCtx.lineTo(flashlightPoly[i].x, flashlightPoly[i].y);
+                    }
+                    mCtx.closePath();
+                    mCtx.fill();
+                }
+
+                let radialGrad = mCtx.createRadialGradient(player.x, player.y, 2, player.x, player.y, (50 + getFlashlightBonusDist() * 0.2));
+                radialGrad.addColorStop(0, 'rgba(0,0,0,1)');
+                radialGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                mCtx.fillStyle = radialGrad;
+                mCtx.beginPath();
+                mCtx.arc(player.x, player.y, (50 + getFlashlightBonusDist() * 0.2), 0, Math.PI * 2);
+                mCtx.fill();
+
+                mCtx.restore();
+                ctx.drawImage(maskCanvas, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            if (!gameRunning || isPaused || isShopOpen) return;
+            updateGame();
+            render();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function initNewLevel() {
+            cancelAnimationFrame(animationFrameId);
+            generateMaze();
+
+            gameRunning = true;
+            isPaused = false;
+            isShopOpen = false;
+            startScreen.style.display = 'none';
+            shopScreen.style.display = 'none';
+            pauseScreen.style.display = 'none';
+            gameoverScreen.style.display = 'none';
+            leaderboardScreen.style.display = 'none';
+            
+            gameLoop();
+        }
+
+        startBtn.addEventListener('click', () => {
+            initAudio();
+            fogEnabled = true; 
+            currentLevel = 1;
+            totalCoins = 10;
+            totalBulbPoints = 0;
+            updateBatteryUI();
+            playerInventory = null;
+            
+            elapsedSeconds = 0;
+            timerDisplay.textContent = "00:00";
+            startTimer();
+
+            updateStatusUI();
+            initNewLevel();
+        });
+
+        closeShopBtn.addEventListener('click', () => {
+            toggleShop();
+        });
+
+        leaderboardBtn.addEventListener('click', () => {
+            renderLeaderboard();
+            startScreen.style.display = 'none';
+            leaderboardScreen.style.display = 'flex';
+        });
+
+        backToStartBtn.addEventListener('click', () => {
+            leaderboardScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+        });
+
+        submitScoreBtn.addEventListener('click', () => {
+            saveScoreAndReturnHome(playerNameInput.value, currentLevel);
+        });
+
+        playerNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveScoreAndReturnHome(playerNameInput.value, currentLevel);
+            }
+        });
+
+        // 觸控控制初始化
+        initTouchControls();
+        generateMaze();
+        render();
+    </script>
+</body>
+</html>
