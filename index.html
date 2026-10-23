@@ -94,6 +94,42 @@
             background: #000;
         }
 
+        /* 右上角物品說明按鈕 (預設暗色未持有狀態) */
+        #btn-help {
+            position: absolute;
+            top: 54px;
+            right: 20px;
+            width: 46px;
+            height: 46px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            color: #64748b;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 20;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            opacity: 0.4;
+            transition: all 0.2s ease;
+        }
+
+        /* 持有道具時亮起 */
+        #btn-help.active {
+            opacity: 1;
+            color: #f8fafc;
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.25);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+        }
+
+        #btn-help:active {
+            transform: scale(0.92);
+        }
+
         /* 左下角觸控搖桿 */
         #joystick-container {
             position: absolute;
@@ -123,15 +159,16 @@
             transition: transform 0.05s ease-out;
         }
 
-        /* 右下角手機按鈕 HUD */
-        #touch-controls {
+        /* 右下角 UI 組合面板（手電筒、商店、道具背包） */
+        #bottom-right-ui {
             position: absolute;
             bottom: 20px;
             right: 20px;
             z-index: 20;
             display: grid;
-            grid-template-columns: repeat(3, 52px);
-            gap: 8px;
+            grid-template-columns: 52px 52px;
+            grid-template-rows: 52px 52px;
+            gap: 10px;
             align-items: center;
             justify-items: center;
         }
@@ -143,13 +180,14 @@
             background: rgba(15, 23, 42, 0.85);
             border: 2px solid #334155;
             color: #f8fafc;
-            font-size: 18px;
+            font-size: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             transition: transform 0.1s, background 0.1s, border-color 0.1s;
+            cursor: pointer;
         }
 
         .touch-btn:active, .touch-btn.active {
@@ -158,33 +196,23 @@
             border-color: #22d3ee;
         }
 
-        .touch-btn-lg {
-            width: 60px;
-            height: 60px;
-            font-size: 22px;
-            border-color: #06b6d4;
-            background: rgba(6, 182, 212, 0.25);
-        }
-
-        /* 道具背包 HUD */
+        /* 道具背包 HUD (右下角) */
         #inventory-hud {
-            position: absolute;
-            top: 54px;
-            right: 20px;
-            width: 46px;
-            height: 46px;
+            width: 52px;
+            height: 52px;
             background: rgba(15, 23, 42, 0.85);
             border: 2px solid #334155;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 24px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            z-index: 15;
-            pointer-events: none;
             transition: all 0.2s;
+            backdrop-filter: blur(4px);
+            cursor: pointer;
         }
+
         #inventory-hud.has-item {
             border-color: #06b6d4;
             background: rgba(6, 182, 212, 0.25);
@@ -348,32 +376,26 @@
                 <div class="hud-badge">
                     <span id="key-display" class="pixel-font" style="color: #f43f5e;">🔑 未集齊</span>
                 </div>
-                <div class="hud-badge" title="🏃 速度 / 🔦 距離">
-                    <span style="color: #34d399;">🏃</span><span id="speed-display" class="pixel-font" style="color: #f8fafc;">2</span>
-                    <span style="color: #facc15; margin-left: 4px;">🔦</span><span id="flashlight-display" class="pixel-font" style="color: #f8fafc;">260</span>
-                </div>
             </div>
         </header>
 
         <!-- 畫布設定為橫向 1600x900 高解析度 -->
         <canvas id="gameCanvas" width="1600" height="900"></canvas>
-        
-        <!-- 背包 HUD -->
-        <div id="inventory-hud"></div>
 
+        <!-- 右上角物品說明按鈕 -->
+        <div id="btn-help" title="物品說明 (Q)">❓</div>
+        
         <!-- 左下角觸控搖桿 -->
         <div id="joystick-container">
             <div id="joystick-stick"></div>
         </div>
 
-        <!-- 右下角手機控制按鈕區 -->
-        <div id="touch-controls">
+        <!-- 右下角 UI 組合面板 (手電筒在上、商店在左、道具背包在右下) -->
+        <div id="bottom-right-ui">
+            <div></div> <!-- 第一列第一格留空 -->
+            <div class="touch-btn" id="btn-light" title="手電筒開關 (F)">🔦</div>
             <div class="touch-btn" id="btn-shop" title="商店 (C)">🛒</div>
-            <div class="touch-btn" id="btn-help" title="說明 (Q)">❓</div>
-            <div class="touch-btn" id="btn-light" title="手電筒 (F)">🔦</div>
-            <div class="touch-btn touch-btn-lg" id="btn-use" title="使用道具 (Space)">🎒</div>
-            <div class="touch-btn touch-btn-lg" id="btn-interact" title="互動撿取 (E)">🖐️</div>
-            <div class="touch-btn touch-btn-lg" id="btn-sprint" title="按住衝刺 (Shift)">⚡</div>
+            <div id="inventory-hud" title="持有道具"></div>
         </div>
 
         <!-- 開始畫面 -->
@@ -473,8 +495,6 @@
         const keyDisplay = document.getElementById('key-display');
         const coinDisplay = document.getElementById('coin-display');
         const levelDisplay = document.getElementById('level-display');
-        const speedDisplay = document.getElementById('speed-display');
-        const flashlightDisplay = document.getElementById('flashlight-display');
         const shopCoinDisplay = document.getElementById('shop-coin-display');
         const timerDisplay = document.getElementById('timer-display');
         const inventoryHud = document.getElementById('inventory-hud');
@@ -492,6 +512,7 @@
         const leaderboardBtn = document.getElementById('leaderboard-btn');
         const submitScoreBtn = document.getElementById('submit-score-btn');
         const backToStartBtn = document.getElementById('back-to-start-btn');
+        const btnHelp = document.getElementById('btn-help');
         
         const playerNameInput = document.getElementById('player-name-input');
         const finalScoreSpan = document.getElementById('final-score');
@@ -526,7 +547,9 @@
         // 手機搖桿與觸控變數
         let joystickActive = false;
         let joystickVector = { x: 0, y: 0 };
-        let isSprintingTouch = false;
+
+        // 記錄當前靠近的手掌圖示可互動道具
+        let currentNearbyItem = null;
 
         function initAudio() {
             if (!audioCtx) {
@@ -764,25 +787,104 @@
                 joystickActive = dist > 5;
             }
 
-            // 右下角按鈕綁定
-            document.getElementById('btn-shop').addEventListener('click', () => { initAudio(); toggleShop(); });
-            document.getElementById('btn-help').addEventListener('click', () => { initAudio(); togglePause(); });
-            document.getElementById('btn-light').addEventListener('click', () => { initAudio(); player.flashlightOn = !player.flashlightOn; });
-            document.getElementById('btn-use').addEventListener('click', () => { initAudio(); useInventoryItem(); });
-            document.getElementById('btn-interact').addEventListener('click', () => { initAudio(); tryInteractItem(); });
+            // 按鈕觸控綁定
+            const btnLight = document.getElementById('btn-light');
+            const btnShop = document.getElementById('btn-shop');
 
-            const sprintBtn = document.getElementById('btn-sprint');
-            sprintBtn.addEventListener('touchstart', (e) => {
+            btnLight.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 initAudio();
-                isSprintingTouch = true;
-                sprintBtn.classList.add('active');
+                player.flashlightOn = !player.flashlightOn;
             });
-            sprintBtn.addEventListener('touchend', (e) => {
+
+            btnShop.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                isSprintingTouch = false;
-                sprintBtn.classList.remove('active');
+                e.stopPropagation();
+                initAudio();
+                toggleShop();
             });
+
+            // 右上角物品說明按鈕
+            btnHelp.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initAudio();
+                if (gameRunning && !isShopOpen) togglePause();
+            });
+            btnHelp.addEventListener('click', () => {
+                initAudio();
+                if (gameRunning && !isShopOpen) togglePause();
+            });
+
+            // 背包點擊/觸控使用道具
+            inventoryHud.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initAudio();
+                useInventoryItem();
+            });
+            inventoryHud.addEventListener('click', () => {
+                initAudio();
+                useInventoryItem();
+            });
+
+            // 畫布點擊事件：用於點擊頭頂手掌圖示來撿取或互換道具
+            canvas.addEventListener('click', (e) => {
+                if (!gameRunning || isPaused || isShopOpen) return;
+                handleCanvasClick(e);
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (!gameRunning || isPaused || isShopOpen) return;
+                if (e.changedTouches.length > 0) {
+                    handleCanvasClick(e.changedTouches[0]);
+                }
+            }, { passive: true });
+        }
+
+        // 偵測點擊是否落在頭頂手掌圖示範圍內
+        function handleCanvasClick(clientTouch) {
+            if (!currentNearbyItem) return;
+
+            const rect = canvas.getBoundingClientRect();
+            // 計算點擊位置相對於 canvas 內部 1600x900 解析度的座標
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickCanvasX = (clientTouch.clientX - rect.left) * scaleX;
+            const clickCanvasY = (clientTouch.clientY - rect.top) * scaleY;
+
+            // 轉換為遊戲世界座標 (World Coordinates)
+            const worldX = clickCanvasX / zoom + camera.x;
+            const worldY = clickCanvasY / zoom + camera.y;
+
+            // 頭頂手掌圖示在遊戲世界的渲染位置
+            const handWorldX = player.x;
+            const handWorldY = player.y - 20;
+
+            // 判斷點擊距離是否在手掌圖示周圍 35 像素以內
+            const dist = Math.hypot(worldX - handWorldX, worldY - handWorldY);
+            if (dist <= 35) {
+                initAudio();
+                pickupOrSwapItem(currentNearbyItem);
+            }
+        }
+
+        function pickupOrSwapItem(targetItem) {
+            if (playerInventory === null) {
+                playerInventory = targetItem;
+                items = items.filter(i => i !== targetItem);
+            } else {
+                let oldInventory = playerInventory;
+                oldInventory.x = targetItem.x;
+                oldInventory.y = targetItem.y;
+                items.push(oldInventory);
+
+                playerInventory = targetItem;
+                items = items.filter(i => i !== targetItem);
+            }
+            updateStatusUI();
+            currentNearbyItem = null;
         }
 
         window.addEventListener('keydown', (e) => {
@@ -856,11 +958,11 @@
         function updatePauseDescription() {
             let desc = "";
             if (!playerInventory) {
-                desc += `<b style="color: #94a3b8;">目前手持道具：無</b><br><span style="font-size: 13px; color: #64748b;">靠近道具點擊 🖐️ 撿起！</span><br><br>`;
+                desc += `<b style="color: #94a3b8;">目前手持道具：無</b><br><span style="font-size: 13px; color: #64748b;">點擊頭頂手掌圖示即可撿起！</span><br><br>`;
             } else if (playerInventory.type === '手槍') {
-                desc += `<b style="color: #facc15;">🔫 手槍 (具備保命功能)</b><br><span style="font-size: 13px; color: #cbd5e1;">點擊 🎒 發射，消滅光束內怪物。<br><span style="color: #34d399; font-weight: bold;">🛡️ 被咬時自動抵扣保命！</span></span><br><br>`;
+                desc += `<b style="color: #facc15;">🔫 手槍 (具備保命功能)</b><br><span style="font-size: 13px; color: #cbd5e1;">發射可消滅光束內怪物。<br><span style="color: #34d399; font-weight: bold;">🛡️ 被咬時自動抵扣保命！</span></span><br><br>`;
             } else if (playerInventory.type === '鏟子') {
-                desc += `<b style="color: #a855f7;">⛏️ 鏟子</b><br><span style="font-size: 13px; color: #cbd5e1;">點擊 🎒 可挖掉角色前方一格牆壁。</span><br><br>`;
+                desc += `<b style="color: #a855f7;">⛏️ 鏟子</b><br><span style="font-size: 13px; color: #cbd5e1;">可挖掉角色前方一格牆壁。</span><br><br>`;
             } else if (playerInventory.type === '地圖') {
                 desc += `<b style="color: #38bdf8;">🗺️ 地圖</b><br><span style="font-size: 13px; color: #cbd5e1;">出現指向出口大門方向的黃色箭頭。<br><span style="color: #f43f5e; font-weight: bold;">⚠️ 前往下一層時自動銷毀。</span></span><br><br>`;
             } else if (playerInventory.type === '磁鐵') {
@@ -1190,19 +1292,7 @@
             }
 
             if (closestItem) {
-                if (playerInventory === null) {
-                    playerInventory = closestItem;
-                    items = items.filter(i => i !== closestItem);
-                } else {
-                    let oldInventory = playerInventory;
-                    oldInventory.x = closestItem.x;
-                    oldInventory.y = closestItem.y;
-                    items.push(oldInventory);
-
-                    playerInventory = closestItem;
-                    items = items.filter(i => i !== closestItem);
-                }
-                updateStatusUI();
+                pickupOrSwapItem(closestItem);
             }
         }
 
@@ -1393,7 +1483,7 @@
                 player.dirX = dx;
                 player.dirY = dy;
 
-                let isSprinting = keys['Shift'] || isSprintingTouch;
+                let isSprinting = keys['Shift'];
                 let currentSpeed = isSprinting ? PLAYER_SHIFT_SPEED : PLAYER_NORMAL_SPEED;
 
                 let nextX = player.x + dx * currentSpeed;
@@ -1540,16 +1630,14 @@
             coinDisplay.textContent = `💰 x${totalCoins}`;
             levelDisplay.textContent = `${currentLevel} / ${maxLevel} 層`;
 
-            let isSprinting = keys['Shift'] || isSprintingTouch;
-            speedDisplay.textContent = isSprinting ? PLAYER_SHIFT_SPEED : PLAYER_NORMAL_SPEED;
-            flashlightDisplay.textContent = 260 + getFlashlightBonusDist();
-
             if (playerInventory) {
                 inventoryHud.textContent = playerInventory.icon;
                 inventoryHud.classList.add('has-item');
+                btnHelp.classList.add('active'); // 有物品時亮起
             } else {
                 inventoryHud.textContent = '';
                 inventoryHud.classList.remove('has-item');
+                btnHelp.classList.remove('active'); // 沒物品時變暗
             }
         }
 
@@ -1863,6 +1951,7 @@
             ctx.stroke();
 
             ctx.restore();
+
             ctx.restore(); 
 
             if (fogEnabled) {
@@ -1904,6 +1993,39 @@
                 ctx.drawImage(maskCanvas, 0, 0);
                 ctx.restore();
             }
+
+            // --- 玩家頭頂手掌圖示 (在迷霧繪製完成後繪製，確保不被遮住) ---
+            currentNearbyItem = null;
+            let minDist = 40;
+            for (let item of items) {
+                let dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    currentNearbyItem = item;
+                }
+            }
+
+            if (currentNearbyItem) {
+                ctx.save();
+                ctx.scale(zoom, zoom);
+                ctx.translate(-camera.x, -camera.y);
+                ctx.translate(player.x, player.y - 20); // 顯示在玩家頭頂上方
+                
+                let scale = 1 + Math.sin(Date.now() / 150) * 0.15;
+                ctx.scale(scale, scale);
+
+                ctx.font = '22px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 光暈效果
+                ctx.shadowColor = playerInventory === null ? 'rgba(56, 189, 248, 0.9)' : 'rgba(251, 191, 36, 0.9)';
+                ctx.shadowBlur = 10;
+
+                ctx.fillText('✋', 0, 0);
+                
+                ctx.restore();
+            }
         }
 
         function gameLoop() {
@@ -1930,34 +2052,33 @@
         }
 
         startBtn.addEventListener('click', () => {
-    initAudio();
+            initAudio();
 
-    // 讓整個遊戲容器或文件進入全螢幕
-    let elem = document.documentElement; // 或者是您的 #game-container
-    if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(err => {
-            console.log("全螢幕請求被拒絕或不支援:", err);
+            let elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log("全螢幕請求被拒絕或不支援:", err);
+                });
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE/Edge */
+                elem.msRequestFullscreen();
+            }
+
+            fogEnabled = true; 
+            currentLevel = 1;
+            totalCoins = 10;
+            totalBulbPoints = 0;
+            updateBatteryUI();
+            playerInventory = null;
+            
+            elapsedSeconds = 0;
+            timerDisplay.textContent = "00:00";
+            startTimer();
+
+            updateStatusUI();
+            initNewLevel();
         });
-    } else if (elem.webkitRequestFullscreen) { /* Safari */
-        elem.webkitRequestFullscreen();
-    } else if (elem.msRequestFullscreen) { /* IE/Edge */
-        elem.msRequestFullscreen();
-    }
-
-    fogEnabled = true; 
-    currentLevel = 1;
-    totalCoins = 10;
-    totalBulbPoints = 0;
-    updateBatteryUI();
-    playerInventory = null;
-    
-    elapsedSeconds = 0;
-    timerDisplay.textContent = "00:00";
-    startTimer();
-
-    updateStatusUI();
-    initNewLevel();
-});
 
         closeShopBtn.addEventListener('click', () => {
             toggleShop();
@@ -1980,7 +2101,7 @@
 
         playerNameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                saveScoreAndReturnHome(playerNameInput.value, currentLevel);
+                saveScoreAndReturnHome(playerNameInput.value, currentLevel5);
             }
         });
 
